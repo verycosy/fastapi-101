@@ -1,0 +1,11 @@
+{
+  "editor.formatOnSave": true,
+  "ruff.organizeImports": false,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": true,
+      "source.organizeImports": true
+    }
+  }
+}

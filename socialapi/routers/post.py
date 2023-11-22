@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
+from socialapi.database import comment_table, database, post_table
 from socialapi.models.post import (
     Comment,
     CommentIn,
@@ -9,56 +10,56 @@ from socialapi.models.post import (
 )
 
 router = APIRouter()
-post_table = {}
-comment_table = {}
+
+# promise처럼 바로 return 해도 되나?
 
 
-def find_post(post_id: int):
-    return post_table.get(post_id)
+async def find_post(post_id: int):
+    query = post_table.select().where(post_table.c.id == post_id)
+    return await database.fetch_one(query)
 
 
 @router.post("", response_model=UserPost, status_code=201)
 async def create_post(post: UserPostIn):
     data = dict(post)
-    last_record_id = len(post_table)
-    new_post = {**data, "id": last_record_id}
-    post_table[last_record_id] = new_post
+    query = post_table.insert().values(data)
+    last_record_id = await database.execute(query)
 
-    return new_post
+    return {**data, "id": last_record_id}
 
 
 @router.get("", response_model=list[UserPost])
 async def get_all_posts():
-    return list(post_table.values())
+    query = post_table.select()
+    return await database.fetch_all(query)
 
 
 @router.post("/comments", response_model=Comment, status_code=201)
 async def create_comment(comment: CommentIn):
-    post = find_post(comment.post_id)
+    post = await find_post(comment.post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
     data = dict(comment)
-    last_record_id = len(comment_table)
-    new_comment = {**data, "id": last_record_id}
-    comment_table[last_record_id] = new_comment
+    query = comment_table.insert().values(data)
+    last_record_id = await database.execute(query)
 
-    return new_comment
+    return {**data, "id": last_record_id}
 
 
 @router.get("/{post_id}/comments", response_model=list[Comment])
 async def get_comments_on_post(post_id: int):
-    return [
-        comment for comment in comment_table.values() if comment["post_id"] == post_id
-    ]
+    query = comment_table.select().where(comment_table.c.post_id == post_id)
+    return await database.fetch_all(query)
 
 
 @router.get("/{post_id}", response_model=UserPostWithComments)
 async def get_post_width_comments(post_id: int):
-    post = find_post(post_id)
+    post = await find_post(post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
+    # App Join?
     return {
         "post": post,
         "comments": await get_comments_on_post(post_id),

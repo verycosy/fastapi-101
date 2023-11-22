@@ -1,11 +1,14 @@
+import os
 from typing import AsyncGenerator, Generator
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from socialapi.main import app
-from socialapi.routers.post import comment_table, post_table
+os.environ["ENV_STATE"] = "test"
+
+from socialapi.database import database  # noqa: E402
+from socialapi.main import app  # noqa: E402
 
 
 # 모든 테스트에서 한 번만 수행
@@ -22,9 +25,9 @@ def client() -> Generator:
 # 매 테스트마다 수행
 @pytest.fixture(autouse=True)
 async def db() -> AsyncGenerator:
-    post_table.clear()
-    comment_table.clear()
+    await database.connect()
     yield
+    await database.disconnect()
 
 
 # def client의 반환값이 의존성으로 주입됨

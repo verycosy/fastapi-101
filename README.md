@@ -11,3 +11,7 @@ black - format
 isort - sort import
 
 $ pip install -r requirements-dev.txt
+$ pytest
+$ pytest -v
+$ pytest --fixtures
+$ pytest --fixtures-per-test

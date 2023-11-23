@@ -1,12 +1,15 @@
 import logging
 from typing import Annotated
 
+import sqlalchemy
 from fastapi import APIRouter, Depends, HTTPException
 
-from socialapi.database import comment_table, database, post_table
+from socialapi.database import comment_table, database, like_table, post_table
 from socialapi.models.post import (
     Comment,
     CommentIn,
+    PostLike,
+    PostLikeIn,
     UserPost,
     UserPostIn,
     UserPostWithComments,
@@ -19,6 +22,12 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # promise처럼 바로 return 해도 되나?
+
+select_post_and_likes = (
+    sqlalchemy.select(post_table, sqlalchemy.func.count(like_table.c.id).label("likes"))
+    .select_from(post_table.outerjoin(like_table))
+    .group_by(post_table.c.id)
+)
 
 
 async def find_post(post_id: int):
@@ -90,7 +99,10 @@ async def get_comments_on_post(post_id: int):
 async def get_post_width_comments(post_id: int):
     logger.info("Getting post and its comments")
 
-    post = await find_post(post_id)
+    query = select_post_and_likes.where(post_table.c.id == post_id)
+    logger.debug(query)
+
+    post = await database.fetch_one(query)
     if not post:
         logger.error(f"Post with post id {post_id} not found")
         raise HTTPException(status_code=404, detail="Post not found")
@@ -100,3 +112,22 @@ async def get_post_width_comments(post_id: int):
         "post": post,
         "comments": await get_comments_on_post(post_id),
     }
+
+
+@router.post("/like", response_model=PostLike, status_code=201)
+async def like_post(
+    like: PostLikeIn, current_user: Annotated[User, Depends(get_current_user)]
+):
+    logger.info("Liking post")
+
+    post = await find_post(like.post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    data = {**dict(like), "user_id": current_user.id}
+    query = like_table.insert().values(data)
+
+    logger.debug(query)
+    last_record_id = await database.execute(query)
+
+    return {**data, "id": last_record_id}

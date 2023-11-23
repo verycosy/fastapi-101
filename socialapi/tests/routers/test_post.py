@@ -107,7 +107,55 @@ async def test_get_all_posts(async_client: AsyncClient, created_post: dict):
     response = await async_client.get("/posts")
 
     assert response.status_code == 200
-    assert response.json() == [created_post]
+    assert created_post.items() <= response.json()[0].items()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("sorting, expected_order", [("new", [2, 1]), ("old", [1, 2])])
+async def test_get_all_posts_sorting(
+    async_client: AsyncClient,
+    logged_in_token: str,
+    sorting: str,
+    expected_order: list[int],
+):
+    # Promise.all 같은 건 없나?
+    await create_post("Test Post 1", async_client, logged_in_token)
+    await create_post("Test Post 2", async_client, logged_in_token)
+
+    response = await async_client.get("/posts", params={"sorting": sorting})
+
+    assert response.status_code == 200
+
+    data = response.json()
+    post_ids = [post["id"] for post in data]
+    assert post_ids == expected_order
+
+
+@pytest.mark.anyio
+async def test_get_all_posts_sort_likes(
+    async_client: AsyncClient,
+    logged_in_token: str,
+):
+    # Promise.all 같은 건 없나?
+    await create_post("Test Post 1", async_client, logged_in_token)
+    await create_post("Test Post 2", async_client, logged_in_token)
+    await like_post(1, async_client, logged_in_token)
+
+    response = await async_client.get("/posts", params={"sorting": "most_likes"})
+
+    assert response.status_code == 200
+
+    data = response.json()
+    post_ids = [post["id"] for post in data]
+    expected_order = [1, 2]
+    assert post_ids == expected_order
+
+
+@pytest.mark.anyio
+async def test_get_all_posts_wrong_sorting(async_client: AsyncClient):
+    response = await async_client.get("/posts", params={"sorting": "wrong"})
+
+    assert response.status_code == 422
 
 
 @pytest.mark.anyio

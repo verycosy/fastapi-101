@@ -1,3 +1,5 @@
+[Mastering REST APIs with FastAPI](https://www.udemy.com/course/rest-api-fastapi-python/)
+
 ```bash
 $ pyenv local 3.11
 $ pyenv exec python -v

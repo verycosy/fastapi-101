@@ -6,7 +6,8 @@ $ pyenv exec python -v
 $ pyenv exec python -m venv .venv
 $ source .venv/bin/activate
 $ pip install -r requirements.txt
-$ uvicorn social-api.main:app --reload
+$ uvicorn socialapi.main:app --reload
+$ uvicorn socialapi.main:app --host 0.0.0.0 --port 8001
 ```
 
 ```bash

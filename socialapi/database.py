@@ -40,18 +40,18 @@ like_table = sqlalchemy.Table(
 )
 
 
-# connect_args로 준 건 sqlite일 때만 필요
-# sqlite는 싱글스레드로 돌아가는데, 여러 스레드로부터 연결되기 위해 사용
-engine = sqlalchemy.create_engine(
-    config.DATABASE_URL, connect_args={"check_same_thread": False}
-)
+connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {}
+engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args=connect_args)
 
 
 metadata.create_all(engine)
 # -- 데이터베이스 생성
 
+
+# 최대 커넥션이 5개인 경우에도 앱 이외의 커넥션을 생각해 줄이기
+db_args = {"min_size": 1, "max_size": 3} if "postgres" in config.DATABASE_URL else {}
 database = databases.Database(
-    config.DATABASE_URL, force_rollback=config.DB_FORCE_ROLL_BACK
+    config.DATABASE_URL, force_rollback=config.DB_FORCE_ROLL_BACK, **db_args
 )
 
 # -- 데이터베이스 연결 및 사용
